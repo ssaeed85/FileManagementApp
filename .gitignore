@@ -23,3 +23,4 @@ Thumbs.db
 # Application specific
 *.log
 .env
+docker-compose.drives.yml

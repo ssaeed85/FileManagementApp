@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.venv/
+venv/
+.pytest_cache/
+htmlcov/
+.dist/
+.build/
+.git/
+.gitignore
+.gitattributes
+.vscode/
+.idea/
+.DS_Store

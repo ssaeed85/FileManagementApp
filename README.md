@@ -8,6 +8,21 @@ A local Streamlit application that brings order to the chaos of your filesystem.
 
 ---
 
+## TL;DR
+
+```powershell
+# 1) Start with dynamic drive mounts
+.\start-docker-with-drives.ps1
+
+# 2) Open app
+start http://localhost:8501
+
+# 3) Stop later
+docker compose -f docker-compose.yml -f docker-compose.drives.yml down
+```
+
+---
+
 ## ✨ Features
 
 ### 🧹 **File Name Cleaning**
@@ -81,6 +96,69 @@ Navigate your filesystem with ease using an intuitive sidebar browser with histo
    ```
 
 5. **Open your browser** to `http://localhost:8501`
+
+---
+
+## 🐳 Docker
+
+This app can run in Docker for a reproducible environment. Note that Windows-only features like opening files via `os.startfile` do not work inside a Linux container.
+
+### Quick Start (Windows + Docker)
+
+Run this from the repo root:
+
+```powershell
+.\start-docker-with-drives.ps1
+```
+
+This script will:
+- Detect all currently available filesystem drives (for example `C:\`, `D:\`, `N:\`)
+- Generate/update `docker-compose.drives.yml`
+- Mount each drive to `/mnt/<drive-letter>` inside the container
+- Rebuild and start the app
+
+Open `http://localhost:8501` and use sidebar `Mounted Drives` buttons.
+
+### When Drives Change
+
+If you connect/disconnect a network drive or external drive, rerun:
+
+```powershell
+.\start-docker-with-drives.ps1
+```
+
+To only regenerate mounts without restart:
+
+```powershell
+.\start-docker-with-drives.ps1 -NoStart
+```
+
+### Manual Compose Commands
+
+Start with base compose only:
+
+```powershell
+docker compose up --build -d
+```
+
+Start with dynamic drive mounts:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.drives.yml up --build -d
+```
+
+Stop containers started with dynamic mounts:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.drives.yml down
+```
+
+### Troubleshooting
+
+- Make sure Docker Desktop is running.
+- If `8501` is in use, change port mapping in `docker-compose.yml`.
+- If a drive button is missing, rerun `./start-docker-with-drives.ps1`.
+- If a mounted drive is empty, verify Docker Desktop has permission to access that drive.
 
 ---
 

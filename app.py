@@ -37,21 +37,45 @@ def get_subdirectories(path):
         return []
 
 
+def get_container_drive_mounts():
+    """Return mounted drive paths exposed under /mnt inside container."""
+    mounts = []
+    mount_root = Path('/mnt')
+    if not mount_root.exists() or not mount_root.is_dir():
+        return mounts
+
+    for mount_dir in sorted(mount_root.iterdir()):
+        if mount_dir.is_dir():
+            drive_name = mount_dir.name.upper()
+            mounts.append((f"{drive_name}:\\", str(mount_dir)))
+
+    return mounts
+
+
 def directory_explorer():
     """Display a directory explorer interface."""
     st.sidebar.header("📂 Directory Explorer")
+
+    # Use platform-appropriate default root.
+    container_mounts = get_container_drive_mounts() if os.name != 'nt' else []
+    if os.name == 'nt':
+        default_start_path = Path.home()
+    elif container_mounts:
+        default_start_path = Path(container_mounts[0][1])
+    else:
+        default_start_path = Path('/')
     
     # Initialize session state
     if 'current_path' not in st.session_state:
-        st.session_state.current_path = str(Path.home())  # Start at user home
+        st.session_state.current_path = str(default_start_path)
     if 'nav_history' not in st.session_state:
         st.session_state.nav_history = [st.session_state.current_path]
     if 'nav_position' not in st.session_state:
         st.session_state.nav_position = 0
     
-    # Drive selection
+    # Drive selection (Windows only)
     drives = get_drives()
-    if drives:
+    if drives and os.name == 'nt':
         current_drive = st.session_state.current_path.split("\\")[0] + "\\"
         selected_drive = st.sidebar.selectbox(
             "Drive:",
@@ -110,7 +134,19 @@ def directory_explorer():
                 st.session_state.nav_position += 1
                 st.session_state.current_path = home_path
                 st.rerun()
-    
+
+    if container_mounts:
+        st.sidebar.markdown("**Mounted Drives:**")
+        for drive_label, target_path in container_mounts:
+            mount_name = Path(target_path).name
+            if st.sidebar.button(f"💽 {drive_label}", key=f"drive_btn_{mount_name}"):
+                if st.session_state.current_path != target_path:
+                    st.session_state.nav_history = st.session_state.nav_history[:st.session_state.nav_position + 1]
+                    st.session_state.nav_history.append(target_path)
+                    st.session_state.nav_position += 1
+                    st.session_state.current_path = target_path
+                    st.rerun()
+
     # List subdirectories
     subdirs = get_subdirectories(st.session_state.current_path)
     
@@ -137,7 +173,7 @@ def directory_explorer():
     with st.sidebar.expander("✏️ Enter path manually"):
         manual_path = st.text_input(
             "Path:",
-            placeholder="C:\\Users\\YourName\\Documents"
+            placeholder="/path/to/folder or C:\\Users\\YourName\\Documents"
         )
         if st.button("Go"):
             if Path(manual_path).exists() and Path(manual_path).is_dir():
@@ -384,17 +420,17 @@ def duplicate_finder_page():
         
         st.success(f"✓ Found {len(matches)} potential duplicate(s)")
         
-        # Build display table
+        # Build display table with explicit absolute paths
         display_data = []
         for match in matches:
-            # Use relative path if available, otherwise just filename
-            file1_display = match.get('file1_relative_path', match['file1_name'])
-            file2_display = match.get('file2_relative_path', match['file2_name'])
+            # Resolve to a canonical absolute path for consistent display in Docker/Windows.
+            file1_display = str(Path(match['file1_path']).resolve(strict=False))
+            file2_display = str(Path(match['file2_path']).resolve(strict=False))
             
             display_data.append({
-                "Path (Folder 1)": file1_display,
+                "Full Path (Folder 1)": file1_display,
                 "Size 1": DuplicateFinder.format_size(match['file1_size']),
-                "Path (Folder 2)": file2_display,
+                "Full Path (Folder 2)": file2_display,
                 "Size 2": DuplicateFinder.format_size(match['file2_size']),
                 "Name Match": f"{match['name_similarity']:.1%}",
                 "Size Match": f"{match['size_similarity']:.1%}",

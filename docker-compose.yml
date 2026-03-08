@@ -1,0 +1,9 @@
+services:
+  app:
+    container_name: file-management-app
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./:/data
